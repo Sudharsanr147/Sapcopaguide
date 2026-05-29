@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CO-PA / Margin Analysis — A Practical Guide for S/4HANA Manufacturing</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,500&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+  :root{
+    --ink:#13201c;
+    --paper:#f3efe4;
+    --paper2:#ece6d6;
+    --moss:#2f5d4f;
+    --moss-deep:#1d3a31;
+    --rust:#b5532a;
+    --amber:#c2872b;
+    --line:#cdc4ac;
+    --line-dk:#9aa899;
+    --shadow:rgba(20,32,28,.14);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',sans-serif;
+    line-height:1.62;
+    font-size:16.5px;
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(47,93,79,.05), transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(181,83,42,.05), transparent 45%);
+  }
+
+  /* ---------- Layout ---------- */
+  .wrap{max-width:1080px;margin:0 auto;padding:0 26px;}
+  header.hero{
+    border-bottom:3px solid var(--ink);
+    padding:64px 0 40px;
+    position:relative;
+    overflow:hidden;
+  }
+  .kicker{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--rust);font-weight:600;
+  }
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:900;
+    font-size:clamp(2.6rem,6vw,4.6rem);
+    line-height:.98;
+    letter-spacing:-.02em;
+    margin:.28em 0 .35em;
+  }
+  h1 em{font-style:italic;color:var(--moss);}
+  .lede{
+    font-size:1.18rem;max-width:64ch;color:#3a463f;
+    font-weight:400;
+  }
+  .meta-row{
+    margin-top:26px;display:flex;flex-wrap:wrap;gap:10px;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;
+  }
+  .tag{
+    border:1.5px solid var(--ink);border-radius:30px;
+    padding:5px 14px;letter-spacing:.06em;text-transform:uppercase;
+    background:var(--paper);
+  }
+  .tag.fill{background:var(--ink);color:var(--paper);}
+
+  /* ---------- TOC ---------- */
+  nav.toc{
+    margin:40px 0;padding:26px 30px;
+    background:var(--moss-deep);color:var(--paper);
+    border-radius:4px;
+    box-shadow:8px 8px 0 var(--ink);
+  }
+  nav.toc h2{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.3em;
+    text-transform:uppercase;color:var(--amber);margin-bottom:16px;font-weight:600;
+  }
+  nav.toc ol{list-style:none;counter-reset:toc;column-count:2;column-gap:38px;}
+  nav.toc li{counter-increment:toc;margin-bottom:9px;break-inside:avoid;}
+  nav.toc a{
+    color:var(--paper);text-decoration:none;font-size:14.5px;
+    display:flex;gap:10px;align-items:baseline;
+    border-bottom:1px solid transparent;transition:.18s;
+  }
+  nav.toc a::before{
+    content:counter(toc,decimal-leading-zero);
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--amber);
+    min-width:22px;
+  }
+  nav.toc a:hover{color:var(--amber);border-bottom-color:var(--amber);}
+
+  /* ---------- Sections ---------- */
+  section{padding:44px 0;border-bottom:1px solid var(--line);}
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--rust);
+    letter-spacing:.2em;font-weight:600;
+  }
+  h2.sec{
+    font-family:'Fraunces',serif;font-weight:600;
+    font-size:clamp(1.7rem,3.6vw,2.5rem);line-height:1.05;
+    letter-spacing:-.015em;margin:.18em 0 .55em;
+  }
+  h3{
+    font-family:'Fraunces',serif;font-weight:600;font-size:1.32rem;
+    margin:30px 0 12px;color:var(--moss-deep);letter-spacing:-.01em;
+  }
+  h4{
+    font-family:'IBM Plex Sans',sans-serif;font-weight:700;font-size:1.02rem;
+    margin:22px 0 8px;letter-spacing:.01em;
+  }
+  p{margin-bottom:14px;max-width:72ch;}
+  ul,ol{margin:0 0 16px 0;padding-left:22px;max-width:72ch;}
+  li{margin-bottom:7px;}
+  strong{font-weight:700;color:var(--moss-deep);}
+  em{color:#3a463f;}
+
+  code{
+    font-family:'IBM Plex Mono',monospace;font-size:.86em;
+    background:var(--paper2);border:1px solid var(--line);
+    padding:1px 6px;border-radius:3px;color:var(--rust);white-space:nowrap;
+  }
+
+  /* ---------- Callouts ---------- */
+  .note{
+    border-left:4px solid var(--moss);
+    background:linear-gradient(90deg,rgba(47,93,79,.08),transparent);
+    padding:16px 20px;margin:20px 0;border-radius:0 4px 4px 0;
+  }
+  .note.warn{border-left-color:var(--rust);
+    background:linear-gradient(90deg,rgba(181,83,42,.09),transparent);}
+  .note .lab{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;font-weight:600;color:var(--moss);display:block;margin-bottom:5px;
+  }
+  .note.warn .lab{color:var(--rust);}
+  .note p{margin-bottom:0;}
+
+  /* ---------- Fiori app pill ---------- */
+  .app{
+    display:inline-flex;align-items:center;gap:7px;
+    background:var(--ink);color:var(--paper);
+    font-family:'IBM Plex Mono',monospace;font-size:12px;
+    padding:3px 11px 3px 8px;border-radius:4px;margin:2px 2px;
+    letter-spacing:.02em;white-space:nowrap;
+  }
+  .app::before{content:"▸";color:var(--amber);font-size:10px;}
+
+  /* ---------- Steps ---------- */
+  .steps{counter-reset:step;list-style:none;padding-left:0;margin:18px 0;}
+  .steps>li{
+    counter-increment:step;position:relative;
+    padding:14px 18px 14px 56px;margin-bottom:12px;
+    background:var(--paper2);border:1px solid var(--line);border-radius:4px;
+  }
+  .steps>li::before{
+    content:counter(step);position:absolute;left:14px;top:13px;
+    width:28px;height:28px;border-radius:50%;background:var(--moss);color:var(--paper);
+    font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .steps>li strong{display:block;margin-bottom:2px;}
+
+  /* ---------- Tables ---------- */
+  .tbl-wrap{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:4px;}
+  table{border-collapse:collapse;width:100%;font-size:14px;background:var(--paper2);}
+  th{
+    background:var(--moss-deep);color:var(--paper);
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.05em;
+    text-transform:uppercase;text-align:left;padding:11px 13px;font-weight:500;
+  }
+  td{padding:10px 13px;border-top:1px solid var(--line);vertical-align:top;}
+  tr:nth-child(even) td{background:rgba(0,0,0,.018);}
+  td code{white-space:normal;}
+  .num{font-family:'IBM Plex Mono',monospace;text-align:right;}
+  .pos{color:var(--moss);font-weight:600;}
+  .neg{color:var(--rust);font-weight:600;}
+  tr.total td{border-top:2px solid var(--ink);font-weight:700;background:rgba(47,93,79,.07);}
+
+  /* ---------- Margin waterfall ---------- */
+  .water{margin:22px 0;font-family:'IBM Plex Mono',monospace;font-size:13.5px;}
+  .water-row{display:flex;align-items:center;gap:14px;padding:6px 0;border-bottom:1px dashed var(--line);}
+  .water-row .lbl{flex:1;}
+  .water-row .val{min-width:120px;text-align:right;font-weight:600;}
+  .water-row .bar{height:14px;border-radius:2px;}
+  .water-row.sub .lbl{padding-left:22px;color:#5a665e;font-size:12.5px;}
+  .water-row.cm{background:rgba(47,93,79,.09);font-weight:700;padding:9px 8px;border-radius:3px;border-bottom:none;}
+
+  /* ---------- Definition grid ---------- */
+  .defgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:20px 0;}
+  .def{background:var(--paper2);border:1px solid var(--line);border-radius:4px;padding:16px 18px;}
+  .def .t{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--rust);margin-bottom:6px;font-weight:600;}
+  .def .d{font-size:14.5px;}
+
+  /* ---------- Pull figure ---------- */
+  .figure{
+    background:var(--moss-deep);color:var(--paper);border-radius:6px;
+    padding:30px 32px;margin:26px 0;box-shadow:6px 6px 0 var(--ink);
+  }
+  .figure .cap{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber);margin-bottom:14px;}
+  .figure code{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#f0d9a8;}
+
+  /* ---------- Flow chain ---------- */
+  .chain{display:flex;flex-wrap:wrap;gap:0;align-items:stretch;margin:22px 0;}
+  .chain .node{
+    background:var(--paper2);border:1.5px solid var(--ink);
+    padding:12px 16px;font-size:13px;flex:1;min-width:140px;position:relative;
+  }
+  .chain .node .h{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--rust);display:block;margin-bottom:3px;font-weight:600;}
+  .chain .node:not(:last-child){border-right:none;}
+  .chain .node:not(:last-child)::after{
+    content:"→";position:absolute;right:-11px;top:50%;transform:translateY(-50%);
+    background:var(--paper);color:var(--moss);font-weight:700;z-index:2;font-size:18px;
+    width:22px;text-align:center;
+  }
+
+  footer{padding:40px 0 70px;text-align:center;}
+  footer p{margin:0 auto;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#5a665e;letter-spacing:.04em;}
+
+  @media(max-width:680px){
+    nav.toc ol{column-count:1;}
+    .chain .node:not(:last-child)::after{content:"↓";right:50%;top:auto;bottom:-13px;transform:translateX(50%);}
+    .chain{flex-direction:column;}
+    .chain .node:not(:last-child){border-right:1.5px solid var(--ink);border-bottom:none;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">S/4HANA · Controlling · Margin Analysis</span>
+    <h1>Working with <em>CO-PA</em><br>in a manufacturing plant</h1>
+    <p class="lede">A practical, do-this-then-that guide to running profitability projections, building product- and customer-wise contribution-margin reports, generating variance analyses, and the everyday manufacturing uses of Profitability Analysis on S/4HANA.</p>
+    <div class="meta-row">
+      <span class="tag fill">Margin Analysis (account-based)</span>
+      <span class="tag">ACDOCA / Universal Journal</span>
+      <span class="tag">Fiori + SAC Planning</span>
+      <span class="tag">Practitioner reference</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#s1">What CO-PA looks like on S/4HANA</a></li>
+    <li><a href="#s2">The data flow into Margin Analysis</a></li>
+    <li><a href="#s3">Characteristics &amp; the CM hierarchy</a></li>
+    <li><a href="#s4">Projections / planning for the year</a></li>
+    <li><a href="#s5">Actual CM — product-wise</a></li>
+    <li><a href="#s6">Actual CM — customer-wise</a></li>
+    <li><a href="#s7">Variance reports (plan vs actual)</a></li>
+    <li><a href="#s8">Production variances into CO-PA</a></li>
+    <li><a href="#s9">Other manufacturing uses</a></li>
+    <li><a href="#s10">A monthly operating rhythm</a></li>
+  </ol>
+</nav>
+
+<!-- 1 -->
+<section id="s1">
+  <span class="sec-num">SECTION 01</span>
+  <h2 class="sec">What CO-PA actually is on S/4HANA</h2>
+  <p>On ECC you chose between <strong>costing-based</strong> and <strong>account-based</strong> CO-PA, and most shops ran costing-based because of its speed and value-field flexibility. On S/4HANA the centre of gravity has moved. <strong>Margin Analysis</strong> — the modern name for account-based CO-PA — is built directly into the Universal Journal (<code>ACDOCA</code>). Every margin-relevant posting carries its profitability characteristics (product, customer, region, etc.) on the same line item as the G/L entry.</p>
+
+  <p>The single biggest consequence for you as a finance head: <strong>CO-PA no longer needs reconciling to FI, because it <em>is</em> FI.</strong> There is one document, one truth. The old month-end ritual of explaining why KE30 didn't tie to the P&amp;L largely disappears.</p>
+
+  <div class="defgrid">
+    <div class="def"><div class="t">Margin Analysis</div><div class="d">Account-based CO-PA living in ACDOCA. Reconciles to the G/L by design. The recommended approach on S/4HANA.</div></div>
+    <div class="def"><div class="t">Costing-based CO-PA</div><div class="d">Still available and can run in parallel using value fields, useful for legacy reports or imputed/anticipated values not yet in FI. Optional.</div></div>
+    <div class="def"><div class="t">Universal Journal</div><div class="d">The <code>ACDOCA</code> table — FI, CO, CO-PA, ML, asset accounting in one line-item table.</div></div>
+    <div class="def"><div class="t">Attributed margin</div><div class="d">S/4 derives COGS components and characteristics onto billing &amp; settlement lines automatically, so margin appears in real time.</div></div>
+  </div>
+
+  <div class="note">
+    <span class="lab">Recommendation for your setup</span>
+    <p>For a manufacturing company adopting S/4HANA fresh, run <strong>Margin Analysis as the primary engine</strong> and only switch on costing-based CO-PA if you have a specific report (e.g. anticipated freight/rebate accruals at point of billing) that the account-based model can't yet serve. Don't run both out of habit — it doubles your reconciliation surface for little gain.</p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="s2">
+  <span class="sec-num">SECTION 02</span>
+  <h2 class="sec">How data lands in CO-PA</h2>
+  <p>Margin appears in CO-PA the moment value-bearing documents post in the operational modules. Understanding these feeders is what lets you explain any number on a CM report.</p>
+
+  <div class="chain">
+    <div class="node"><span class="h">SD Billing</span>Revenue, discounts, freight recovery → characteristics from customer &amp; material master</div>
+    <div class="node"><span class="h">COGS split</span>Cost component split (material, labour, OH, variances) attributed at billing</div>
+    <div class="node"><span class="h">Production</span>Order settlement posts production variances to the profit segment</div>
+    <div class="node"><span class="h">Overhead</span>Cost-centre / process / overhead assessments &amp; allocations to CO-PA</div>
+    <div class="node"><span class="h">Direct FI/MM</span>Freight, rebates, scrap, claims posted directly to a profitability segment</div>
+  </div>
+
+  <table style="margin-top:6px;">
+    <tr><th>Source</th><th>What it brings to CO-PA</th><th>Trigger</th></tr>
+    <tr><td><strong>SD invoice (VF01/VF04)</strong></td><td>Net revenue, trade discounts, freight, the cost-of-goods-sold split by cost component</td><td>Billing release to accounting</td></tr>
+    <tr><td><strong>Production order settlement</strong></td><td>Production variances (price, quantity, scrap, resource) by material</td><td>Period-end settlement <code>CO88</code> equiv.</td></tr>
+    <tr><td><strong>Cost-centre allocation</strong></td><td>Sales, marketing, admin overhead spread to products / divisions</td><td>Assessment / distribution cycle</td></tr>
+    <tr><td><strong>Direct postings (FB50 / MIRO)</strong></td><td>Rebates, freight claims, cash discounts, special provisions</td><td>Manual / automatic with PA segment</td></tr>
+  </table>
+
+  <div class="note warn">
+    <span class="lab">Watch this</span>
+    <p>If a CM report shows revenue but no COGS for a product, the usual culprit is a <strong>missing or incomplete cost component split</strong> on the material's cost estimate, or a sales order that wasn't valued at billing. Fix it at the cost-estimate level, not in the report.</p>
+  </div>
+</section>
+
+<!-- 3 -->
+<section id="s3">
+  <span class="sec-num">SECTION 03</span>
+  <h2 class="sec">Characteristics and the contribution-margin hierarchy</h2>
+  <p><strong>Characteristics</strong> are the dimensions you slice by; <strong>the cost-component / account structure</strong> gives you the rows of the margin statement. Before any reporting is useful, agree the CM levels with the business. A typical manufacturing CM staircase:</p>
+
+  <div class="water">
+    <div class="water-row"><span class="lbl">Gross sales</span><span class="val">100.0</span><span class="bar" style="width:200px;background:var(--moss)"></span></div>
+    <div class="water-row sub"><span class="lbl">– Discounts, rebates, returns</span><span class="val neg">(8.0)</span></div>
+    <div class="water-row"><span class="lbl"><strong>Net revenue</strong></span><span class="val">92.0</span><span class="bar" style="width:184px;background:var(--moss)"></span></div>
+    <div class="water-row sub"><span class="lbl">– Direct material</span><span class="val neg">(38.0)</span></div>
+    <div class="water-row sub"><span class="lbl">– Direct labour</span><span class="val neg">(9.0)</span></div>
+    <div class="water-row sub"><span class="lbl">– Variable production OH</span><span class="val neg">(7.0)</span></div>
+    <div class="water-row cm"><span class="lbl">= CM I (variable contribution)</span><span class="val">38.0</span></div>
+    <div class="water-row sub"><span class="lbl">– Fixed production OH</span><span class="val neg">(10.0)</span></div>
+    <div class="water-row cm"><span class="lbl">= CM II (after full production cost)</span><span class="val">28.0</span></div>
+    <div class="water-row sub"><span class="lbl">– Freight, packing, selling cost</span><span class="val neg">(6.0)</span></div>
+    <div class="water-row cm"><span class="lbl">= CM III (product / customer margin)</span><span class="val">22.0</span></div>
+    <div class="water-row sub"><span class="lbl">– Production variances settled</span><span class="val neg">(2.5)</span></div>
+    <div class="water-row sub"><span class="lbl">– Marketing &amp; admin allocation</span><span class="val neg">(8.5)</span></div>
+    <div class="water-row cm" style="background:rgba(181,83,42,.12)"><span class="lbl">= Operating profit (CM IV)</span><span class="val">11.0</span></div>
+  </div>
+
+  <h3>Characteristics worth deriving in a plant</h3>
+  <ul>
+    <li><strong>Product / material &amp; product hierarchy</strong> — the spine of product-wise reporting.</li>
+    <li><strong>Customer &amp; customer group / sold-to / ship-to</strong> — for customer profitability.</li>
+    <li><strong>Sales organisation, distribution channel, division</strong> — standard SD characteristics, free.</li>
+    <li><strong>Plant &amp; profit centre</strong> — ties margin to the producing site.</li>
+    <li><strong>Region / sales district / country</strong> — geographic margin.</li>
+    <li><strong>Order reason / customer segment</strong> — derived characteristics you define for analytics (e.g. OEM vs replacement, export vs domestic).</li>
+  </ul>
+  <p>Derivation rules (the S/4 equivalent of <code>KEDR</code>) populate these automatically from master data at posting time. Get derivation right once and every downstream report inherits clean dimensions.</p>
+</section>
+
+<!-- 4 -->
+<section id="s4">
+  <span class="sec-num">SECTION 04</span>
+  <h2 class="sec">Projections — planning a year of profitability</h2>
+  <p>This is your "next 1 year" question. On S/4HANA you have two realistic routes. Pick based on what tooling you've licensed.</p>
+
+  <h3>Route A — SAP Analytics Cloud (SAC) Planning <span style="font-weight:400;font-size:.9rem;color:var(--rust)">· recommended</span></h3>
+  <p>SAC is SAP's strategic planning layer for S/4HANA. You build a planning model that reads actuals from Margin Analysis (live or imported) and lets you plan forward by month across your characteristics.</p>
+  <ol class="steps">
+    <li><strong>Build / connect the model</strong> Point SAC at the S/4 Margin Analysis data (live connection or import). Actuals flow in by product, customer, period.</li>
+    <li><strong>Set the version</strong> Create a <em>Budget</em> or <em>Forecast</em> version distinct from <em>Actual</em>. Keep multiple scenarios (base / upside / downside).</li>
+    <li><strong>Drive volumes</strong> Plan sales quantity by product × customer × month — usually the primary driver in manufacturing.</li>
+    <li><strong>Value the plan</strong> Apply planned prices and standard cost / planned cost component split so planned CM computes automatically per line.</li>
+    <li><strong>Layer overheads &amp; allocations</strong> Plan fixed production OH, marketing and admin, then allocate to the same CM staircase.</li>
+    <li><strong>Publish &amp; lock</strong> Publish the version; it becomes the comparison baseline for the year.</li>
+  </ol>
+
+  <h3>Route B — Classic CO-PA planning (KEPM-style)</h3>
+  <p>Still present on S/4HANA for shops not on SAC. You plan directly in the CO-PA planning framework using planning layouts, methods (enter, forecast, top-down distribution, valuation) and sequences. It's functional but de-emphasised; SAP's direction is SAC.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Capability</th><th>SAC Planning</th><th>Classic CO-PA planning</th></tr>
+      <tr><td>Driver-based volume planning</td><td class="pos">Strong</td><td>Limited</td></tr>
+      <tr><td>Multiple versions / scenarios</td><td class="pos">Yes</td><td class="pos">Yes</td></tr>
+      <tr><td>Top-down distribution</td><td class="pos">Yes</td><td class="pos">Yes (planning method)</td></tr>
+      <tr><td>Automatic valuation from cost estimate</td><td class="pos">Yes</td><td class="pos">Yes</td></tr>
+      <tr><td>Spreadsheet-style UX / collaboration</td><td class="pos">Strong</td><td class="neg">Weak</td></tr>
+      <tr><td>SAP strategic direction</td><td class="pos">Yes</td><td class="neg">Maintenance only</td></tr>
+    </table>
+  </div>
+
+  <div class="note">
+    <span class="lab">Practical projection workflow for a plant</span>
+    <p>Plan <strong>volume first</strong> (sales team owns it), then let the system <strong>value</strong> it with the current standard cost estimate to get planned CM, then plan <strong>overheads and allocations</strong> on top. Keep the projection at <em>product × customer-group × month</em> — fine enough to be actionable, coarse enough to maintain. Re-forecast quarterly by copying actuals-to-date into a rolling forecast version.</p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="s5">
+  <span class="sec-num">SECTION 05</span>
+  <h2 class="sec">Actual contribution margin — product-wise</h2>
+  <p>On S/4HANA your first stop is the Fiori analytical apps, not a custom report. They read Margin Analysis live.</p>
+
+  <p style="margin-bottom:8px;">Key apps:</p>
+  <div style="margin-bottom:18px;">
+    <span class="app">Product Profitability</span>
+    <span class="app">Market Segment — Actuals / Plan</span>
+    <span class="app">Margin Analysis — Query</span>
+    <span class="app">Display Line Items — Margin Analysis</span>
+  </div>
+
+  <ol class="steps">
+    <li><strong>Open the analytical app</strong> Launch <em>Product Profitability</em> (or the Market Segment query). Set period range and company code / plant.</li>
+    <li><strong>Set rows = Product, build the CM measures</strong> Drag Product (and product hierarchy) to rows; add Net Revenue, Material, Labour, OH, and the CM I / II / III measures as columns.</li>
+    <li><strong>Drill</strong> Expand a product group → product → individual material; the cost component split explains <em>why</em> margin differs.</li>
+    <li><strong>Add a second dimension</strong> Pivot product against plant or sales org to see where the same SKU earns more.</li>
+    <li><strong>Save &amp; share the view</strong> Save as a tile for repeatable monthly use; export to spreadsheet for the MIS pack.</li>
+  </ol>
+
+  <h4>Illustrative product-wise CM output</h4>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Product</th><th class="num">Qty</th><th class="num">Net Rev</th><th class="num">Material</th><th class="num">Labour+OH</th><th class="num">CM II</th><th class="num">CM II %</th></tr>
+      <tr><td>Dining Table — Oak</td><td class="num">1,200</td><td class="num">48.0</td><td class="num">19.2</td><td class="num">11.5</td><td class="num pos">17.3</td><td class="num">36.0%</td></tr>
+      <tr><td>Wardrobe — 3 door</td><td class="num">820</td><td class="num">41.0</td><td class="num">18.5</td><td class="num">10.2</td><td class="num pos">12.3</td><td class="num">30.0%</td></tr>
+      <tr><td>Mirror unit — framed</td><td class="num">3,400</td><td class="num">20.4</td><td class="num">12.9</td><td class="num">5.1</td><td class="num neg">2.4</td><td class="num neg">11.8%</td></tr>
+      <tr class="total"><td>Total</td><td class="num">5,420</td><td class="num">109.4</td><td class="num">50.6</td><td class="num">26.8</td><td class="num">32.0</td><td class="num">29.3%</td></tr>
+    </table>
+  </div>
+  <p>The instant insight: the mirror unit is a <span class="neg">margin drag</span> at 11.8% — a candidate for re-pricing, redesign, or rationalisation. CO-PA surfaces this without you assembling anything by hand.</p>
+</section>
+
+<!-- 6 -->
+<section id="s6">
+  <span class="sec-num">SECTION 06</span>
+  <h2 class="sec">Actual contribution margin — customer-wise</h2>
+  <p>Same engine, customer characteristic on rows. This is where CO-PA earns its keep — it captures customer-specific costs (rebates, freight terms, returns) that a plain SD report misses.</p>
+
+  <ol class="steps">
+    <li><strong>Open Market Segment / Customer Profitability</strong> Set rows = Customer (or Customer Group / Sold-to).</li>
+    <li><strong>Add customer-level cost rows</strong> Net revenue, COGS, then freight, cash discount, rebates, returns — the costs that vary by customer.</li>
+    <li><strong>Drill customer → product</strong> See <em>which products</em> a customer buys and at what margin; a big customer can be low-margin if they only buy commodity SKUs.</li>
+    <li><strong>Rank</strong> Sort by CM III descending to get a customer profitability league table.</li>
+    <li><strong>Cross-tab with region / channel</strong> Expose whether export customers truly out-earn domestic after freight and incentives.</li>
+  </ol>
+
+  <h4>Illustrative customer-wise CM output</h4>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Customer</th><th class="num">Net Rev</th><th class="num">COGS</th><th class="num">Freight</th><th class="num">Rebate</th><th class="num">CM III</th><th class="num">CM III %</th></tr>
+      <tr><td>Retail Chain A (export)</td><td class="num">62.0</td><td class="num">40.3</td><td class="num">4.1</td><td class="num">3.1</td><td class="num pos">14.5</td><td class="num">23.4%</td></tr>
+      <tr><td>Distributor B (domestic)</td><td class="num">38.0</td><td class="num">24.7</td><td class="num">1.2</td><td class="num">0.8</td><td class="num pos">11.3</td><td class="num">29.7%</td></tr>
+      <tr><td>Project Client C</td><td class="num">29.0</td><td class="num">21.0</td><td class="num">3.6</td><td class="num">2.6</td><td class="num neg">1.8</td><td class="num neg">6.2%</td></tr>
+      <tr class="total"><td>Total</td><td class="num">129.0</td><td class="num">86.0</td><td class="num">8.9</td><td class="num">6.5</td><td class="num">27.6</td><td class="num">21.4%</td></tr>
+    </table>
+  </div>
+  <p>Note Distributor B has lower revenue than Retail Chain A but a <span class="pos">higher margin %</span> — once freight and rebate are loaded, "biggest" and "best" diverge. That separation is the whole point of customer CO-PA.</p>
+</section>
+
+<!-- 7 -->
+<section id="s7">
+  <span class="sec-num">SECTION 07</span>
+  <h2 class="sec">Variance reports — plan vs actual</h2>
+  <p>With a published plan/forecast version and live actuals in the same model, variance reporting is a column comparison. The skill is in <em>decomposing</em> the variance so it points to an owner.</p>
+
+  <h3>Build the comparison</h3>
+  <ol class="steps">
+    <li><strong>Use the Plan/Actual app</strong> <span class="app">Market Segment Actuals vs Plan</span> or an SAC Plan-vs-Actual story.</li>
+    <li><strong>Columns = Plan, Actual, Variance, Variance %</strong> Add an absolute and a percentage variance column.</li>
+    <li><strong>Rows = the CM staircase</strong> So you see at which CM level the gap opens — revenue, material, OH, or below-the-line.</li>
+    <li><strong>Drill the worst lines</strong> Expand variance by product, then customer, to localise it.</li>
+  </ol>
+
+  <h3>Decompose the revenue/margin variance</h3>
+  <p>A single "margin is down 3.0" number is useless to a plant manager. Split it into the classic drivers:</p>
+  <div class="defgrid">
+    <div class="def"><div class="t">Price variance</div><div class="d">Sold at a different price than planned. (Actual price − plan price) × actual qty. Owned by sales / commercial.</div></div>
+    <div class="def"><div class="t">Volume variance</div><div class="d">Sold more/fewer units than planned at plan margin. (Actual qty − plan qty) × plan unit CM. Owned by sales.</div></div>
+    <div class="def"><div class="t">Mix variance</div><div class="d">Shift toward lower- or higher-margin products within the total volume. Owned by sales / product management.</div></div>
+    <div class="def"><div class="t">Cost variance</div><div class="d">Actual unit cost ≠ standard — material price, yield, OH absorption. Owned by operations / procurement.</div></div>
+  </div>
+
+  <h4>Illustrative CM variance bridge</h4>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>CM line</th><th class="num">Plan</th><th class="num">Actual</th><th class="num">Variance</th><th class="num">%</th><th>Driver</th></tr>
+      <tr><td>Net revenue</td><td class="num">110.0</td><td class="num">109.4</td><td class="num neg">(0.6)</td><td class="num">(0.5%)</td><td>Volume −, price +</td></tr>
+      <tr><td>Direct material</td><td class="num">48.0</td><td class="num">50.6</td><td class="num neg">(2.6)</td><td class="num neg">(5.4%)</td><td>Material price ↑</td></tr>
+      <tr><td>Labour + OH</td><td class="num">26.0</td><td class="num">26.8</td><td class="num neg">(0.8)</td><td class="num">(3.1%)</td><td>Under-absorption</td></tr>
+      <tr class="total"><td>CM II</td><td class="num">36.0</td><td class="num">32.0</td><td class="num neg">(4.0)</td><td class="num neg">(11.1%)</td><td>Mostly material cost</td></tr>
+    </table>
+  </div>
+  <div class="note">
+    <span class="lab">How to present it</span>
+    <p>Lead the MIS commentary with the <strong>cost-side material variance</strong> — that's where 2.6 of the 4.0 gap sits, and it's the actionable one. Revenue held; the margin miss is an operations / procurement story, not a sales story. This is exactly the kind of clean attribution CO-PA lets you make defensibly.</p>
+  </div>
+</section>
+
+<!-- 8 -->
+<section id="s8">
+  <span class="sec-num">SECTION 08</span>
+  <h2 class="sec">Production variances flowing into CO-PA</h2>
+  <p>This is the manufacturing-specific heart of CO-PA. Your products are valued at <strong>standard cost</strong>. Reality differs. The gap is captured as production variance on the production order and, at period end, <strong>settled to CO-PA</strong> so that operating profit reflects what production actually cost — not just the standard.</p>
+
+  <div class="chain">
+    <div class="node"><span class="h">Standard cost</span>Material valued at standard via cost estimate</div>
+    <div class="node"><span class="h">Production order</span>Actual material, labour, machine consumed</div>
+    <div class="node"><span class="h">Variance calc</span>Categories: price, qty, scrap, resource, lot-size</div>
+    <div class="node"><span class="h">Settlement</span>Variance settled to the profit segment in CO-PA</div>
+    <div class="node"><span class="h">Operating profit</span>CM reflects true production cost</div>
+  </div>
+
+  <h4>Variance categories you'll see</h4>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Category</th><th>Means</th><th>Typically owned by</th></tr>
+      <tr><td><strong>Price variance</strong></td><td>Input bought at a price ≠ standard</td><td>Procurement</td></tr>
+      <tr><td><strong>Quantity / usage</strong></td><td>Consumed more/less input than the BOM</td><td>Production / shop floor</td></tr>
+      <tr><td><strong>Scrap variance</strong></td><td>Rejects above planned scrap</td><td>Quality / production</td></tr>
+      <tr><td><strong>Resource / rate</strong></td><td>Activity rate (labour, machine) ≠ standard</td><td>Operations / costing</td></tr>
+      <tr><td><strong>Lot-size / fixed-cost</strong></td><td>Fixed cost spread over different volume</td><td>Planning</td></tr>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <span class="lab">Key month-end discipline</span>
+    <p>CO-PA operating profit is only complete <strong>after</strong> WIP calculation, variance calculation, and order settlement are run. If you pull a margin report mid-close, production variances won't have hit the profit segment yet and your operating profit will look artificially close to standard. Sequence matters — settle, then report.</p>
+  </div>
+</section>
+
+<!-- 9 -->
+<section id="s9">
+  <span class="sec-num">SECTION 09</span>
+  <h2 class="sec">Other ways CO-PA earns its keep in a plant</h2>
+
+  <h3>Pricing &amp; quotation support</h3>
+  <p>Before quoting a large order, model it against the product's cost component split and customer-specific freight/rebate terms to see the CM <em>before</em> committing a price. Stops the plant from winning revenue and losing margin.</p>
+
+  <h3>Product / SKU rationalisation</h3>
+  <p>Rank the full SKU range by CM II and CM III. The long tail of low-margin, low-volume SKUs is usually visible immediately — CO-PA gives the defensible numbers for a discontinuation decision.</p>
+
+  <h3>Make-vs-outsource &amp; capacity decisions</h3>
+  <p>Compare in-house CM (loaded with production variances and OH absorption) against an outsourced unit cost. CO-PA holds the true delivered cost, including the variance behaviour.</p>
+
+  <h3>Channel &amp; region steering</h3>
+  <p>Margin by distribution channel and region tells you where to push sales effort — high-margin channels deserve more capacity allocation than high-revenue ones.</p>
+
+  <h3>Rebate &amp; incentive effectiveness</h3>
+  <p>Because rebates post to the customer's profit segment, you can see whether a customer's incremental volume actually paid for the incentive given to win it.</p>
+
+  <h3>Feeding the MIS &amp; board pack</h3>
+  <p>The CM staircase by product, customer, channel and region is the natural backbone of a manufacturing MIS. Built once as saved Fiori views / SAC stories, it refreshes monthly with no rebuild.</p>
+
+  <div class="figure">
+    <div class="cap">Rule of thumb</div>
+    <p>If a management question starts with <em>"which product / customer / channel / region is more profitable, and why"</em> — that's a CO-PA question. If it starts with <em>"what does the legal P&amp;L say"</em> — that's the G/L. On S/4HANA they're the same data, viewed two ways.</p>
+  </div>
+</section>
+
+<!-- 10 -->
+<section id="s10">
+  <span class="sec-num">SECTION 10</span>
+  <h2 class="sec">A monthly operating rhythm</h2>
+  <p>Putting it together, here's a clean close-to-report cycle for the finance team.</p>
+  <ol class="steps">
+    <li><strong>Through the month</strong> Billing, goods issues, and direct postings populate Margin Analysis in real time. Spot-check derivation on new products / customers.</li>
+    <li><strong>Period-end — operations</strong> Run WIP, variance calculation, and production order settlement so variances reach the profit segment.</li>
+    <li><strong>Period-end — overhead</strong> Run assessment / distribution cycles to allocate marketing, admin and indirect OH to CO-PA.</li>
+    <li><strong>Validate</strong> Reconcile CO-PA operating profit to the G/L P&amp;L — on Margin Analysis this should tie by design; investigate any residual.</li>
+    <li><strong>Report actuals</strong> Refresh product-wise and customer-wise CM views; export for the MIS pack.</li>
+    <li><strong>Variance &amp; commentary</strong> Run plan-vs-actual, decompose into price / volume / mix / cost, write commentary that names the driver and the owner.</li>
+    <li><strong>Re-forecast (quarterly)</strong> Copy actuals-to-date into a rolling forecast version; re-plan the remaining months.</li>
+  </ol>
+
+  <div class="note">
+    <span class="lab">The one-line summary</span>
+    <p>On S/4HANA, CO-PA / Margin Analysis turns the single Universal Journal into a profitability lens: <strong>plan it in SAC, post it through SD and production, report CM by product and customer in Fiori, decompose the variance into an owner, and re-forecast quarterly</strong> — all reconciled to the G/L by construction.</p>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>CO-PA / MARGIN ANALYSIS · S/4HANA MANUFACTURING · PRACTITIONER REFERENCE</p>
+  </div>
+</footer>
+
+</body>
+</html>
